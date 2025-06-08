@@ -59,6 +59,34 @@ Using the [transmissionrpc](https://pythonhosted.org/transmissionrpc/) python li
 	* Optionally disable logging by setting the log level to `logging.CRITICAL` which isn't used anywhere
 3. Run with `python3 /path/to/TransmissionBot/bot.py` and enjoy!
 
+### ⚠️ Discord Intents Required
+
+As of discord.py v1.5+, you **must** specify intents in your code and enable the "Message Content Intent" in the Discord Developer Portal:
+
+1. **In your code:**  
+   Make sure you have:
+   ```python
+   intents = discord.Intents.default()
+   intents.message_content = True
+   client = Bot(command_prefix=..., intents=intents)
+   ```
+
+2. **In the Discord Developer Portal:**
+   - Go to your bot at https://discord.com/developers/applications
+   - Click "Bot" in the sidebar.
+   - Under "Privileged Gateway Intents", enable "MESSAGE CONTENT INTENT".
+   - Save changes.
+
+If you do not do both, your bot will not be able to read messages and commands will not work.
+
+---
+
+### Classic Prefix Commands (Not Slash Commands)
+
+This bot uses the classic prefix-based command system (e.g., `t/list`, `t/summary`). It does **not** use Discord's newer slash commands (`/command`).
+
+If you want to migrate to slash commands, see the `TODO.md` for a migration plan.
+
 ## Detailed features
 
 ### <a name="channelDM">Interact via text channels or DMs</a>
@@ -84,12 +112,14 @@ Using the [transmissionrpc](https://pythonhosted.org/transmissionrpc/) python li
 
 #### List one or more transfers with pertinent information
 * `t/list`
+* **Regular users only see torrents they added. Admins/owners see all torrents.**
 * Specify transfers using sequence of ids<sup>[1](#idseq)</sup>, searching transfer names with regular expressions, or filtering by transfer properties (e.g. downloading, finished, etc.)
 * Click 🔄 reaction to update output in realtime (in-channel only, not through DM)
 * `t/help list` for more info
 
 #### Print transfer summary
 * `t/summary`
+* **Regular users only see torrents they added. Admins/owners see all torrents.**
 * Includes overall transfer rates, amount of data transferred (based on current set of transfers), transfer counts for different states (*e.g.* downloading, finished, etc.), and list of highest seed-ratio transfers (configurable)
 * Click 🔄 reaction to update output in realtime (in-channel only, not through DM)
 * Use other reactions to print filtered lists of transfers

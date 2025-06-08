@@ -24,7 +24,7 @@ import datetime
 import pytz
 import platform
 import secrets
-import transmissionrpc
+import transmission_rpc as transmissionrpc
 import logging
 from logging import handlers
 import base64
@@ -43,7 +43,7 @@ TSCLIENT_CONFIG = None
 
 # logging.basicConfig(format='%(asctime)s %(message)s',filename=join(expanduser("~"),'ts_scripts.log'))
 logName = join(CONFIG_DIR,'transmissionbot.log')
-logging.basicConfig(format='%(asctime)s %(message)s',filename=join(CONFIG_DIR,'transmissionbot.log'))
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s %(name)s %(message)s')
 logger = logging.getLogger('transmission_bot')
 logger.setLevel(logging.DEBUG) # set according to table below. Events with values LESS than the set value will not be logged
 """
@@ -227,7 +227,10 @@ TORRENT_OPTOUT_USERS = {}
 async def determine_prefix(bot, message):
 	return CONFIG['bot_prefix']
 
-client = Bot(command_prefix=determine_prefix)
+intents = discord.Intents.default()
+intents.message_content = True  # Required for reading message content in most bots
+
+client = Bot(command_prefix=determine_prefix, intents=intents)
 TSCLIENT = None
 MAKE_CLIENT_FAILED = False
 
@@ -1825,7 +1828,6 @@ async def list_transfers(message, content="", repeat_msg_key=None, msgs=None):
 	content=content.strip()
 	if await CommandPrecheck(message):
 		async with message.channel.typing():
-		
 			if not repeat_msg_key:
 				if len(REPEAT_MSGS) == 0:
 					reload_client()
@@ -1834,13 +1836,14 @@ async def list_transfers(message, content="", repeat_msg_key=None, msgs=None):
 						await message.delete()
 					except:
 						pass
-		
 			torrents, errStr = get_torrent_list_from_command_str(content)
-			
+			# --- FILTER BY USER ---
+			is_admin = message.author.id in CONFIG['owner_user_ids']
+			torrents = filter_torrents_for_user(torrents, message.author.id, is_admin)
+			# --- END FILTER ---
 			if errStr != "":
 				await message.channel.send(errStr)
 				return
-				
 			embeds = torList(torrents, title="{} transfer{} matching '`{}`'".format(len(torrents),'' if len(torrents)==1 else 's',content), compact_output=IsCompactOutput(message))
 		
 			embeds[-1].set_footer(text="📜 Legend, 🧾 Summarize, 🧰 Modify, 🖨 Reprint{}".format('\nUpdating every {}—❎ to stop'.format(humantime(REPEAT_MSGS[repeat_msg_key]['freq'],compact_output=False)) if repeat_msg_key else ', 🔄 Auto-update'))
@@ -2132,7 +2135,7 @@ async def modify(message, content=""):
 					ops = ["pause","resume","remove","removedelete","verify"]
 					opNames = ["pause","resume","remove","remove and delete","verify"]
 					opEmoji = ['⏸','▶️','❌','🗑','🔬']
-					opStr = "⏸pause ▶️resume ❌remove 🗑remove  and  delete 🔬verify"
+					opStr = "⏸pause ▶️resume ❌remove 🗑remove  and  delete 🔬verify"
 					embeds = torList(torrents,author_name="Click a reaction to choose modification".format(len(torrents), '' if len(torrents)==1 else 's'),title="{} transfer{} matching '`{}`' will be modified".format(len(torrents), '' if len(torrents)==1 else 's', content), footer=opStr + "\n📜 Legend, 🚫 Cancel", compact_output=IsCompactOutput(message))
 				else:
 					embed=discord.Embed(title="Modify transfers",color=0xb51a00)
@@ -2497,9 +2500,9 @@ async def LegendGetEmbed(embed_data=None):
 		embed = discord.Embed(title='Legend', color=0xb51a00)
 
 	embed.add_field(name="Status 🔍", value=joinChar.join(["🔻—downloading","🌱—seeding","⏸—paused","🔬—verifying","🚧—queued","🏁—finished","↕️—any"]), inline=not isCompact)
-	embed.add_field(name="Metrics 📊", value=joinChar.join(["⬇️—download  rate","⬆️—upload  rate","⏬—total  downloaded","⏫—total  uploaded","⚖️—seed  ratio","⏳—ETA"]), inline=not isCompact)
-	embed.add_field(name="Modifications 🧰", value=joinChar.join(["⏸—pause","▶️—resume","❌—remove","🗑—remove  and  delete","🔬—verify"]), inline=not isCompact)
-	embed.add_field(name="Error ‼️", value=joinChar.join(["✅—none","⚠️—tracker  warning","🌐—tracker  error","🖥—local  error"]), inline=not isCompact)
+	embed.add_field(name="Metrics 📊", value=joinChar.join(["⬇️—download  rate","⬆️—upload  rate","⏬—total  downloaded","⏫—total  uploaded","⚖️—seed  ratio","⏳—ETA"]), inline=not isCompact)
+	embed.add_field(name="Modifications 🧰", value=joinChar.join(["⏸—pause","▶️—resume","❌—remove","🗑—remove  and  delete","🔬—verify"]), inline=not isCompact)
+	embed.add_field(name="Error ‼️", value=joinChar.join(["✅—none","⚠️—tracker  warning","🌐—tracker  error","🖥—local  error"]), inline=not isCompact)
 	embed.add_field(name="Activity 📈", value=joinChar.join(["🐢—stalled","🐇—active","🚀—running (rate>0)"]), inline=not isCompact)
 	embed.add_field(name="Tracker 📡", value=joinChar.join(["🔐—private","🔓—public"]), inline=not isCompact)
 	embed.add_field(name="Messages 💬", value=joinChar.join(["🔄—auto-update message","❎—cancel auto-update","🖨—reprint at bottom", "📱 *or* 💻—switch output format to mobile/desktop", "🧾—summarize listed transfers"]), inline=not isCompact)
@@ -2643,6 +2646,7 @@ async def toggle_dryrun_cmd(context):
 
 @client.event
 async def on_message(message):
+	logger.debug(f"Received message: {message.content} from {message.author} in {message.channel}")
 	if message.author.id == client.user.id:
 		return
 	if message_has_torrent_file(message):
@@ -2955,5 +2959,32 @@ dmCommands = {
 	'set-repeat-freq': {'alias':['freq'], 'cmd':set_repeat_freq},
 	'info': {'alias':[], 'cmd':print_info}
 }
+
+# Helper to filter torrents by user
+
+def filter_torrents_for_user(torrents, user_id, is_admin):
+    if is_admin:
+        return torrents
+    # Only show torrents added by this user
+    # Use both TORRENT_ADDED_USERS and transfers.json for robustness
+    from os.path import exists
+    filtered = []
+    # Try to load from global dict first
+    for t in torrents:
+        added_by = None
+        if t.hashString in TORRENT_ADDED_USERS:
+            added_by = TORRENT_ADDED_USERS[t.hashString]
+        else:
+            # Fallback: check transfers.json
+            if exists(TORRENT_JSON):
+                try:
+                    oldTorrents = load_json(path=TORRENT_JSON)
+                    if t.hashString in oldTorrents and 'added_user' in oldTorrents[t.hashString]:
+                        added_by = oldTorrents[t.hashString]['added_user']
+                except Exception:
+                    pass
+        if added_by == user_id:
+            filtered.append(t)
+    return filtered
 
 client.run(CONFIG['bot_token'])
