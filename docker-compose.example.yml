@@ -22,12 +22,12 @@ services:
       # DISCORD_GUILD_ID: "1234567890123456789"
       # Optional: Clean up torrent names with these rules
       # NAME_CLEANUP_REPLACE: "+: ,%20: "
-      # NAME_CLEANUP_REMOVE: "FitGirl,rutor.info"
+      # NAME_CLEANUP_REMOVE: "SomeGroup,AnotherTag"
       # Optional: Notification settings (dm or channel)
       # NOTIFY_MODE: dm
       # NOTIFY_CHANNEL_ID: "1234567890123456789"
       # Optional: UNC path for completed download notifications
-      # UNC_BASE: "\\\\server\\share"
+      # UNC_BASE: "\\server\share"
     volumes:
       # Persistent database storage
       - ./transbotdata.db:/app/transbotdata.db

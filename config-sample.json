@@ -1,9 +1,0 @@
-{
-    "bot_token": "YOUR_DISCORD_BOT_TOKEN_HERE",
-    "tsclient": {
-        "host": "127.0.0.1",
-        "port": 9091,
-        "user": "admin",
-        "password": "password"
-    }
-}

@@ -68,13 +68,11 @@ TSCLIENT = transmission_rpc.Client(
     password=TS_CONFIG["password"]
 )
 
-UNC_BASE = r"\\192.168.86.73\games"
-
 # Name cleanup: set NAME_CLEANUP_REPLACE and NAME_CLEANUP_REMOVE as comma-separated pairs in env, e.g.
-# NAME_CLEANUP_REPLACE='+: ,%20: ', NAME_CLEANUP_REMOVE='FitGirl,rutor.info'
+# NAME_CLEANUP_REPLACE='+: ,%20: ', NAME_CLEANUP_REMOVE='SomeGroup,AnotherTag'
 def clean_torrent_name(name):
     replace = os.environ.get("NAME_CLEANUP_REPLACE", "+: ,%20: ")
-    remove = os.environ.get("NAME_CLEANUP_REMOVE", "FitGirl,rutor.info")
+    remove = os.environ.get("NAME_CLEANUP_REMOVE", "")
     # Apply replacements
     for pair in replace.split(","):
         if ":" in pair:
@@ -96,7 +94,7 @@ def is_admin(interaction: discord.Interaction) -> bool:
 NOTIFY_MODE = os.environ.get("NOTIFY_MODE", "dm").lower()
 NOTIFY_CHANNEL_ID = int(os.environ.get("NOTIFY_CHANNEL_ID", "0"))
 
-# Legend for status and metrics
+# Legend for status and metrics (only those actually used)
 LEGEND = {
     'downloading': '🔻',
     'seeding': '🌱',
@@ -104,7 +102,6 @@ LEGEND = {
     'verifying': '🔬',
     'queued': '🚧',
     'finished': '🏁',
-    'any': '↕️',
     'download_rate': '⬇️',
     'upload_rate': '⬆️',
     'total_downloaded': '⏬',
@@ -115,17 +112,11 @@ LEGEND = {
     'resume': '▶️',
     'remove': '❌',
     'remove_delete': '🗑',
-    'verify': '🔬',
     'error': '‼️',
     'none': '✅',
     'tracker_warning': '⚠️',
     'tracker_error': '🌐',
     'local_error': '🖥',
-    'stalled': '🐢',
-    'active': '🐇',
-    'running': '🚀',
-    'private': '🔐',
-    'public': '🔓',
 }
 
 # --- Robust DB Initialization and Cleanup ---
@@ -165,6 +156,10 @@ def robust_db_init():
 
 robust_db_init()
 
+# Remove hardcoded UNC_BASE, use env var only
+def get_unc_base():
+    return os.environ.get("UNC_BASE", "")
+
 async def notify_completed_torrents():
     await client.wait_until_ready()
     notified = set()
@@ -185,8 +180,8 @@ async def notify_completed_torrents():
                         if tor.status == "seeding" and t["hash"] not in notified:
                             user_id = db_torrent["user_id"]
                             # Use configurable UNC base if available
-                            unc_base = os.environ.get("UNC_BASE", UNC_BASE)
-                            unc_path = f"{unc_base}\\{clean_torrent_name(tor.name)}"
+                            unc_base = get_unc_base()
+                            unc_path = f"{unc_base}\{clean_torrent_name(tor.name)}"
                             msg = f"✅ <@{user_id}> Your download is complete and available at: `{unc_path}`"
                             
                             # Send notification based on mode

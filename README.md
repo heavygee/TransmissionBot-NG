@@ -173,10 +173,10 @@ Show system information about the bot and Transmission
 | `DISCORD_ADMIN_ROLE` | Role name for admin privileges | `admin` | No |
 | `DISCORD_GUILD_ID` | Specific Discord server ID | None | No |
 | `NAME_CLEANUP_REPLACE` | Comma-separated pairs for search/replace in torrent names | `+: ,%20: ` | No |
-| `NAME_CLEANUP_REMOVE` | Comma-separated strings to remove from torrent names | `FitGirl,rutor.info` | No |
+| `NAME_CLEANUP_REMOVE` | Comma-separated strings to remove from torrent names | (example: `SomeGroup,AnotherTag`) | No |
 | `NOTIFY_MODE` | Notification mode (`dm` or `channel`) | `dm` | No |
 | `NOTIFY_CHANNEL_ID` | Channel ID for notifications when using `channel` mode | None | No |
-| `UNC_BASE` | UNC path base for completed download notifications | Varies | No |
+| `UNC_BASE` | UNC path base for completed download notifications | (example: `\\server\share`) | No |
 
 ---
 
