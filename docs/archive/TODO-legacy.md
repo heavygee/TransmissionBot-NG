@@ -36,7 +36,6 @@ Migrate TransmissionBot from classic prefix-based commands (discord.py 1.x) to a
 ### 5. Optional Enhancements
 - [ ] Add autocomplete for slash command options (e.g., torrent names, filters).
 - [ ] Add ephemeral responses for privacy (where appropriate).
-- [ ] Consider adding a web dashboard or webhook integration.
 
 ---
 
@@ -45,6 +44,14 @@ Migrate TransmissionBot from classic prefix-based commands (discord.py 1.x) to a
 - Some features (like reactions) may need to be rethought or replaced with buttons/selects.
 - The bot will need the "applications.commands" OAuth2 scope and appropriate permissions.
 - Message content intent is not required for slash commands, but may be needed for legacy support.
+
+---
+
+## Won't Do / Legacy / Obsolete
+- Classic prefix commands (e.g., `t/list`, `t/summary`, etc.)
+- Reaction-based controls (e.g., using reactions to filter/sort or trigger actions)
+- Web dashboard (browser-based UI for managing torrents)
+- Webhook integration (sending updates to external services)
 
 ---
 

@@ -1,270 +1,217 @@
-# Transmission Discord Bot
-A self-hosted python [Discord.py](https://github.com/Rapptz/discord.py) bot for controlling an instance of [Transmission](https://transmissionbt.com), the bittorrent client,  from a **private** Discord server.
-Using the [transmissionrpc](https://pythonhosted.org/transmissionrpc/) python library, this bot is built on [kkrypt0nn's bot template](https://github.com/kkrypt0nn/Python-Discord-Bot-Template) and adapted from [leighmacdonald's transmission scripts](https://github.com/leighmacdonald/transmission_scripts).
+# TransmissionBot-NG (Next Generation)
 
-## Features overview
-* [Interact via text channels or DMs](#channelDM)
-* [Add transfers](#add)
-* [Modify existing transfers](#modify)
-* [Check transfer status](#status) (with optional realtime updating of output)
-* [Notification system for transfer state changes](#notifications)
-* [Pretty output and highly configurable](#pretty)
-* [Easy setup](#setup)
-* [`t/help` for usage information](#help)
-
-## Example images
-* Various images of TransmissionBot interaction through DM (light mode images) and in-channel (dark mode images)
-* Going left to right, top to bottom for light mode images
-	* Adding new transfers from torrent file (can also add magnet links or a url to a torrent file)
-	* Listing transfers (with filtering, sorting, regex searching by name and tracker, etc.)
-	* Modifying transfers
-		* All transfers for pause/resume
-		* Or by transfer name (with filtering etc.) for pause/resume/remove/remove-delete/verify, with confirmation for removal
-	* Notifications via DM (can opt-in to notificaitons for any transfers, and users get notifications for transfers they added)
-	* Transfer summary, followed up by listing running tranfers via reaction click
-* Dark mode images
-	* Mostly the same stuff but with commands send in-channel
-	* Note that reactions are removed when no longer necessary to keep the channel clean
-	* In-channel notifications for a variety of (customizable) transfer state changes
-	* Second dark mode image: list tranfers by name regex search, followed up by summary of listed transfers via reaction click
-	
-
-![summary](https://github.com/twilsonco/TransmissionBot/blob/master/example%20image%20collage.png?raw=true)
-
-
-## Install
-1. Get [Transmission](https://transmissionbt.com) and setup its [web interface](https://helpdeskgeek.com/how-to/using-the-transmission-web-interface/)
-2. Install python 3, [transmissionrpc](https://pypi.org/project/transmissionrpc/), pytz, netifaces and [discord.py](https://pypi.org/project/discord.py/)
-3. Clone this repository using `git clone https://github.com/twilsonco/TransmissionBot`
-
-## Configure
-1. Setup your new bot on Discord:
-	1. Sign up for a Discord [developer account](https://discord.com/developers/docs)
-	2. Go to the [developer portal](https://discordapp.com/developers/applications), click *New Application*, pick a name and click *Create*
-		* *Note the `CLIENT ID`*
-	3. Click on *Bot* under *SETTINGS* and then click *Add Bot*
-	4. Fill out information for the bot and **uncheck the `PUBLIC BOT` toggle**
-		* *Note the bot `TOKEN`*
-2. Invite the bot to your server
-	1. Go to `https://discordapp.com/api/oauth2/authorize?client_id=<client_id>&scope=bot&permissions=<permissions>`
-		* replace `<client_id>` with the `CLIENT ID` from above
-		* replace `<permissions>` with the minimum permissions `93248`(*for read/send/manage messages, embed links, read message history, and add rections*) or administrator permissions `9` to keep things simple
-	2. Invite the bot to your server
-2. Configure [`config.json`](#configfile) file starting with `config-sample.json`
-	* *All values with* `ids` *are referring to Discord IDs, which are 18-digit numbers you can find by following [these instructions](https://support.discord.com/hc/en-us/articles/206346498-Where-can-I-find-my-User-Server-Message-ID-)*
-	* Values that MUST be configured: `bot_token`, `listen_channel_ids` if you want to use in-channel, `notification_channel_id` if you wish to use in-channel notifications, `owner_user_ids` at least with your Discord user id, `tsclient` with information pointing to your Transmission remote gui, `whitelist_user_ids` at least with your Discord user id and any other Discord users you wish to be able to use the bot.
-	* After first run, a `config.json` file will be created in the same directory as `bot.py`. This file should then be used to make any configuration changes, and the definition of `CONFIG` in `bot.py` should be commented out or removed.
-2. Configure logging in `bot.py`
-	* Pick a location for the logfile on line 124; default is the same directory where bot.py resides
-	* Optionally disable logging by setting the log level to `logging.CRITICAL` which isn't used anywhere
-3. Run with `python3 /path/to/TransmissionBot/bot.py` and enjoy!
-
-### ⚠️ Discord Intents Required
-
-As of discord.py v1.5+, you **must** specify intents in your code and enable the "Message Content Intent" in the Discord Developer Portal:
-
-1. **In your code:**  
-   Make sure you have:
-   ```python
-   intents = discord.Intents.default()
-   intents.message_content = True
-   client = Bot(command_prefix=..., intents=intents)
-   ```
-
-2. **In the Discord Developer Portal:**
-   - Go to your bot at https://discord.com/developers/applications
-   - Click "Bot" in the sidebar.
-   - Under "Privileged Gateway Intents", enable "MESSAGE CONTENT INTENT".
-   - Save changes.
-
-If you do not do both, your bot will not be able to read messages and commands will not work.
+A modern, self-hosted Python [Discord.py](https://github.com/Rapptz/discord.py) bot for controlling a [Transmission](https://transmissionbt.com) BitTorrent client from a **private** Discord server, using Discord's slash commands and a privacy-first, Docker-only architecture.
 
 ---
 
-### Classic Prefix Commands (Not Slash Commands)
+## Project Relationship & Credits
 
-This bot uses the classic prefix-based command system (e.g., `t/list`, `t/summary`). It does **not** use Discord's newer slash commands (`/command`).
+**TransmissionBot-NG** is a next-generation rewrite, inspired by the original [TransmissionBot](https://github.com/twilsonco/TransmissionBot) by Tim Wilson and contributors. This project was started fresh to take advantage of Discord's modern slash command API, async/await patterns, and robust Docker deployment. While some utility ideas and patterns are inspired by the original, nearly all code and architecture have been rewritten for clarity, maintainability, and modern best practices.
 
-If you want to migrate to slash commands, see the `TODO.md` for a migration plan.
+**Credits:**
+- Original inspiration: [TransmissionBot](https://github.com/twilsonco/TransmissionBot) by Tim Wilson
+- Thanks to: Rapptz, kkrypt0nn, leighmacdonald, and the Discord.py community
 
-## Detailed features
+---
 
-### <a name="channelDM">Interact via text channels or DMs</a>
-* Use commands with `t/` prefix in text channel or via DM
-* Via DM only, use commands without prefix (*e.g.* `summary` or `s` rather than `t/summary` or `t/s`)
-* *Why use DMs vs in-channel?*
-	* Use DMs for user privacy or to keep the in-channel usage clean
-	* Use in-channel when privacy isn't an issue, or if you wish to take advantage of auto-updating output
-	* *Note: you can configure the bot to only respond to DMs or in-channel commands, so it can be a fully DM-based method of controlling Transmission if you wish*
+## Major Features
+- **Slash Commands Only:** All bot interaction is via Discord's modern slash commands (e.g. `/add`, `/list`, `/pause`).
+- **Privacy by Default:** Regular users only see/manage their own torrents; admins can see all.
+- **Autocomplete:** Pause, resume, and remove commands support autocomplete for torrent names/hashes.
+- **Ephemeral Responses:** All command responses are private to the user.
+- **Modern Discord API:** Built for Discord.py 2.x+ with explicit intents and up-to-date API usage.
+- **SQLite State:** All state is stored in SQLite (via `aiosqlite`), not in-memory or JSON.
+- **Docker-Only Deployment:** Designed to run as a container, with healthchecks and easy configuration.
+- **Configurable Name Cleanup:** Environment variables allow for custom torrent name display.
 
-### <a name="add">Add transfers</a>
-* Simply drag a `.torrent` file into the channel on discord and it will be added and started
-* Alternatively, enter a transfer magnet link or an address to a `.torrent` file using `t/add MAGNET_OR_URL`
+---
 
-### <a name="modify">Modify existing transfers</a>
-* `t/modify` to pause, resume, verify, remove, or remove and delete one or more transfers
-* Specify transfers using sequence of ids (*e.g.* 1,3,5-8), searching transfer names with regular expressions, or filtering by transfer properties (*e.g.* downloading, finished, etc.)
-	* Limit number of matches using `-N` option
-* Option to protext transfers using private trackers from removal
-* `t/help modify` for more info
+## Installation Guide
 
-### <a name="status">Check transfer status</a>
+### Prerequisites
+1. A Discord Bot Token ([Discord Developer Portal](https://discord.com/developers/applications))
+2. A running Transmission instance with RPC access enabled
+3. Docker and Docker Compose installed on your system
 
-#### List one or more transfers with pertinent information
-* `t/list`
-* **Regular users only see torrents they added. Admins/owners see all torrents.**
-* Specify transfers using sequence of ids<sup>[1](#idseq)</sup>, searching transfer names with regular expressions, or filtering by transfer properties (e.g. downloading, finished, etc.)
-* Click 🔄 reaction to update output in realtime (in-channel only, not through DM)
-* `t/help list` for more info
+### Step 1: Create Your Discord Bot
+1. Go to the [Discord Developer Portal](https://discord.com/developers/applications)
+2. Click "New Application" and give it a name
+3. Go to the "Bot" tab and click "Add Bot"
+4. Under "Privileged Gateway Intents", enable:
+   - Message Content Intent
+   - Server Members Intent
+5. Save changes
+6. Click "Reset Token" and copy your bot token
 
-#### Print transfer summary
-* `t/summary`
-* **Regular users only see torrents they added. Admins/owners see all torrents.**
-* Includes overall transfer rates, amount of data transferred (based on current set of transfers), transfer counts for different states (*e.g.* downloading, finished, etc.), and list of highest seed-ratio transfers (configurable)
-* Click 🔄 reaction to update output in realtime (in-channel only, not through DM)
-* Use other reactions to print filtered lists of transfers
-* Print symbol `t/legend`
+### Step 2: Configure the Bot
+1. Clone this repository:
+   ```bash
+   git clone https://github.com/yourusername/TransmissionBot-NG.git
+   cd TransmissionBot-NG
+   ```
 
-### <a name="notifications">Notification system for transfer state changes</a>
-* Print notifications regarding transfer state changes in a text channel and through DMs
-* Users are notified through DM about transfers they added
-* Can opt in to DM notifications for other transfers by reacting with 🔔 to `t/list` message or in-channel notifications
-* Opt out of DM notifications 
-	* Opt out of individual DM notifications by reacting with 🔕 to `t/list` message or either in-channel or DM notifications
-	* Users opt out of all DM notifications using `t/notifications` through DM
-	* Owners can disable in-channel notifications using `t/notifications` in a listened channel
-* Customize what state changes are included in the configuration
+2. Create your docker-compose.yml file (using the example as a template):
+   ```bash
+   cp docker-compose.example.yml docker-compose.yml
+   ```
 
-### <a name="pretty">Pretty output and highly configurable</a>
-* Output automatically formatted for display on desktop or mobile discord clients (in-channel only, not through DM)
-* Use of Embeds and unicode symbols where appropriate.
-* Remove reactions from messages when no longer necessary for prettier scroll-back (in-channel only, not through DM)
-* Configure user access using whitelist, blacklist and owner list
-	* Control whether whitelisted users are able to remove and/or delete transfers (with optional override specifically for transfers added by the user)
-* Protect transfers using private trackers from removal
-* Set realtime update and notification frequency
-* Set realtime update timeout
-* Listen for commands on all or only specified text channels
-* Toggle in-channel or DM interaction separately, or the notification system entirely
-* Set which transfer state changes are reported in notifications with separate settings for in-channel notifications, notifications sent to users that added transfers, and users that opt into DM notifications
-* Toggle dry-run to control whether transfer modifications are actually carried out
+3. Edit docker-compose.yml with your settings:
+   - Add your Discord bot token
+   - Configure your Transmission connection details
+   - Adjust other settings as needed
 
-### <a name="help">`t/help` for usage information</a>
-* Print help for some commands using `t/help COMMAND_NAME` (*e.g.* `t/help list`)
-
-### <a name="setup">Easy setup</a>
-0. Setup bot on Discord developer portal
-1. Clone repository `git clone https://github.com/twilsonco/TransmissionBot`
-2. Configure `CONFIG` in `bot.py` to your liking
-3. Run bot `python3 /path/to/bot.py`
-	* Bot will create `config.json`, after which you can remove or comment the definition of `CONFIG` in `bot.py` to make future updates easier
-	
-### <a name="configfile">`config-sample.json` contents</a>
-`"# something"` <— this is a comment
-```javascript
-{
-    "DM_compact_output_user_ids": [], "# users that will get compact output via DM (changed by t/compact command)"
-    "blacklist_user_ids": [], "# discord users disallowed to use bot"
-    "bot_prefix": "t/", "# bot command prefix"
-    "bot_token": "BOT-TOKEN", "# bot token"
-    "delete_command_message_private_torrent": true, "# deletes command message if that message contains one or more torrent files that use a private tracker"
-    "delete_command_messages": false, "# delete command messages from users"
-    "dryrun": false, "# if true, no changes are actually applied to transfers"
-    "listen_DMs": true, "# listen for commands via DM to the bot"
-    "listen_all_channels": false, "# if true, listen for commands in all text channels"
-    "listen_channel_ids": [], "# channels in which to listen for commands"
-    "logo_url": "https://iyanovich.files.wordpress.com/2009/04/transmission-logo.png", "# URL to logo that appears in some output"
-    "notification_DM_opt_out_user_ids": [], "# DON'T MODIFY (used by bot to record users that have opted out of receiving DM notifications)"
-    "notification_channel_id": 0, "# id of channel to which in-channel notificatations will be posted"
-    "notification_enabled": true, "# if False, in-channel and DM notifications are disabled"
-    "notification_enabled_in_channel": true, "# if False, in-channel notifications are disabled, but DM notifications will still work"
-    "notification_freq": 300, "# number of seconds between checking transfers and posting notifications"
-    "notification_states": { "# determines the types of transfer state changes that are reported in notifications..."
-        "added_user": [ "# ...and DM notifications to users that added transfers"
-            "removed",
-            "error",
-            "downloaded",
-            "finished"
-        ],
-        "in_channel": [ "# ...for in-channel notifications, (this is the full list of potential state changes)"
-            "new",
-            "removed",
-            "error",
-            "downloaded",
-            "finished"
-        ],
-        "notified_users": [ "# ...DM notifications for users that opted in to DM notifications for transfer(s)"
-            "removed",
-            "error",
-            "downloaded",
-            "stalled",
-            "unstalled",
-            "finished",
-            "stopped",
-            "started"
-        ]
-    },
-    "owner_user_ids": [], "# discord users given full access"
-    "private_transfer_protection_added_user_override": true, "# if true, the user that added a private transfer can remove it regardless of 'private_transfers_protected'"
-    "private_transfer_protection_bot_owner_override": false, "# similar to 'private_transfer_protection_added_user_override', but allows bot owners to delete private transfers"
-    "private_transfers_protected": true, "# prevent transfers on private trackers from being removed"
-    "reaction_wait_timeout": 7200, "# seconds the bot should wait for a reaction to be clicked by a user"
-    "repeat_cancel_verbose": true, "# if true, print message when auto-update is canceled for a message"
-    "repeat_freq": 10, "# number of seconds between updating an auto-update message"
-    "repeat_freq_DM_by_user_ids": {}, "# use t/repeatfreq to set autoupdate frequency over DM on a per-user basis"
-    "repeat_timeout": 3600, "# number of seconds before an auto-update message times out"
-    "repeat_timeout_DM_by_user_ids": {}, "# same but for autoupdate timeout"
-    "repeat_timeout_verbose": true, "# if true, print message when auto-update message times out and stops updating"
-    "summary_num_top_ratio": 0, "# number of top seed-ratio transfers to show at the bottom of the summary output"
-    "tsclient": { "# information for transmission remote web gui"
-        "host": "127.0.0.1",
-        "password": "password",
-        "port": 9091,
-        "user": "admin"
-    },
-    "whitelist_added_user_remove_delete_override": true, "# if true, override both 'whitelist_user_can_remove' and 'whitelist_user_can_delete' allowing whitelisted users to remove and delete transfers they added"
-    "whitelist_user_can_delete": false, "# if true, whitelisted users can remove and delete any transfer"
-    "whitelist_user_can_remove": false, "# if true, whitelisted users can remove any transfer"
-    "whitelist_user_ids": [] "# discord users allowed to use bot"
-}
+### Step 3: Run the Bot
+```bash
+docker compose up -d
 ```
 
-## To-do (~~implemented~~)
-* Comment and clean up code so people can read/trust it
-* Command to print detailed information for transfer(s)
-	* Complete connection information
-	* Lists of transfer files, peers, trackers
-* ~~Add ability to verify transfer data~~
-* When searching by name, update regex to include potential accented characters, eg `pokemon` would also match `pokémon`
-* ~~Specify number of transfers to show when using `list` or `modify`~~
-* Combine the `list` and `modify` commands in the code, with a simple parameter to specify whether or not modification is allowed
-* Currently, searching by name is done with case-insensitive regex. Update to that if a user includes upper case characters, case-sensitive search is performed
-* ~~Add recurring list option. Ie every five seconds replace `list` output with fresh output. This would be done by reacting to a "repeat" emoji to initiate repetition of the current search~~ (also did this for `summary`)
-* ~~Add additional filtering options: stalled, error, non-zero up/down rate.~~
-* Add shorthand for filtering options (downloading/seeding/stalled/paused become d/s/i/p etc., that's i for "idle" since s is for seeding)
-* Add a `top` command that'sessentially a combination of the up/down rate filter and the repeating output features 
-* Ability to refine `list` output with filter or sort using reactions; ie click a filter or sort reaction which triggers another message with additional reactions to click to apply the extra filters or sort
-* Ability to specify which files to include in download (we'll see about that; sounds clunky but maybe using file ID specifiers *e.g.* `1,3-5,8`)
-* ~~Notifications for when a transfer finishes/stalls/errors~~
-	* ~~via DM to the user that added the transfer~~
-	* ~~or by posting to the channel from which a transfer was added~~
-	* ~~Let other users opt to receive notifications for transfers they *didn't* add~~
-* Post-download file management (*never going to happen...*)
-	* Compress files (encrypted) and make available for direct download from server via download link posted to channel or DM'd to user
-* ~~Use JSON config file so that updating is non-destructive~~
-* Add `set` command so owners can edit configuration through Discord
-* ~~Add a toggle for minimalised output for better display on mobile devices. Toggle using `t/compact` as standalone command or by clicking a 📱 reaction. Store as global variable so all commands output can be affected.~~
+### Step 4: Invite the Bot to Your Server
+1. Go back to the Discord Developer Portal
+2. Go to "OAuth2" > "URL Generator"
+3. Check the scopes "bot" and "applications.commands"
+4. In bot permissions, select:
+   - Read Messages/View Channels
+   - Send Messages
+   - Embed Links
+   - Attach Files
+   - Use Slash Commands
+5. Copy the generated URL and open it in your browser
+6. Select your server and authorize the bot
 
-## Author(s)
+### Step 5: Set Up Admin Role
+1. Create a role called `admin` in your Discord server
+2. Assign this role to users who should have full torrent management capabilities
+3. If you want to use a different role name, set the `DISCORD_ADMIN_ROLE` environment variable
 
-* Tim Wilson
+---
 
-## Thanks to:
+## First-Time Setup
 
-* Rapptz
-* kkrypt0nn
-* leighmacdonald
+If this is your first time running the bot, you must create the database file before starting Docker Compose. Run:
+
+```bash
+cp transbotdata.db.empty transbotdata.db
+```
+
+This ensures the database file exists and can be mounted by Docker. If you skip this step, Docker may create a zero-byte file, which can cause errors.
+
+---
+
+## Available Commands
+
+### `/add`
+Add a new torrent to Transmission
+- **Options:**
+  - `magnet`: A magnet link to add
+  - `file`: Upload a .torrent file to add
+- **Notes:**
+  - At least one of magnet or file must be provided
+  - Response is ephemeral (only visible to you)
+
+### `/list`
+List your torrents (admins can see all torrents)
+- **Notes:**
+  - Regular users can only see their own torrents
+  - Admins can see all torrents in the system
+  - Shows status, progress, and other details
+
+### `/summary`
+Show a summary of your torrents (admins can see all torrents)
+- **Notes:**
+  - Shows overall download/upload statistics
+  - Groups torrents by status
+  - Shows total count of torrents
+
+### `/pause`
+Pause a torrent
+- **Options:**
+  - `hash`: Select a torrent to pause (autocomplete enabled)
+- **Notes:**
+  - Regular users can only pause their own torrents
+  - Admins can pause any torrent
+
+### `/resume`
+Resume a paused torrent
+- **Options:**
+  - `hash`: Select a torrent to resume (autocomplete enabled)
+- **Notes:**
+  - Regular users can only resume their own torrents
+  - Admins can resume any torrent
+
+### `/remove`
+Remove a torrent
+- **Options:**
+  - `hash`: Select a torrent to remove (autocomplete enabled)
+  - `delete_data`: Whether to also delete downloaded files (default: False)
+- **Notes:**
+  - Regular users can only remove their own torrents
+  - Admins can remove any torrent
+
+### `/legend`
+Show a legend explaining the meaning of status emojis
+- **Notes:**
+  - Explains what each emoji in the status and metrics represents
+
+### `/help`
+Show help information about available commands
+
+### `/info` (admin only)
+Show system information about the bot and Transmission
+
+---
+
+## Environment Variables
+
+| Variable | Description | Default | Required |
+|----------|-------------|---------|----------|
+| `DISCORD_TOKEN` | Your Discord bot token | None | Yes |
+| `TRANSMISSION_HOST` | Transmission RPC host | None | Yes |
+| `TRANSMISSION_PORT` | Transmission RPC port | None | Yes |
+| `TRANSMISSION_USER` | Transmission RPC username | None | Yes |
+| `TRANSMISSION_PASSWORD` | Transmission RPC password | None | Yes |
+| `DEBUG` | Enable debug logging | `0` | No |
+| `DISCORD_ADMIN_ROLE` | Role name for admin privileges | `admin` | No |
+| `DISCORD_GUILD_ID` | Specific Discord server ID | None | No |
+| `NAME_CLEANUP_REPLACE` | Comma-separated pairs for search/replace in torrent names | `+: ,%20: ` | No |
+| `NAME_CLEANUP_REMOVE` | Comma-separated strings to remove from torrent names | `FitGirl,rutor.info` | No |
+| `NOTIFY_MODE` | Notification mode (`dm` or `channel`) | `dm` | No |
+| `NOTIFY_CHANNEL_ID` | Channel ID for notifications when using `channel` mode | None | No |
+| `UNC_BASE` | UNC path base for completed download notifications | Varies | No |
+
+---
+
+## Example Docker Compose
+See `docker-compose.example.yml` for a full template.
+
+---
 
 ## License
 
-This project is licensed under the Apache License 2.0 - see the [LICENSE.md](LICENSE.md) file for details
+This project is licensed under the Apache License 2.0. See the [LICENSE](LICENSE) file for details.
+
+---
+
+## Troubleshooting
+
+### "Bot doesn't respond to commands"
+1. Make sure your bot has the correct permissions
+2. Verify you invited the bot with the "applications.commands" scope
+3. Discord can take up to an hour to register slash commands; wait and try again
+
+### "Cannot connect to Transmission"
+1. Check your Transmission RPC settings are correct
+2. Make sure Transmission is running and accessible from the Docker container
+3. Verify the RPC whitelist in Transmission allows connections from your bot
+
+### "Only see Command Not Found errors"
+- Discord may be taking time to register slash commands. Wait up to an hour and try again.
+
+---
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+---
+
+For questions, issues, or to contribute, please open an issue or pull request on this repository.

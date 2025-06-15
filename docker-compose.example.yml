@@ -4,10 +4,33 @@ services:
     build: .
     container_name: transmissionbot
     environment:
-      - TZ=UTC
+      # Use dictionary (map) style for environment variables!
+      # This is REQUIRED if your values contain colons or other special characters.
+      TZ: UTC
+      # Required: Your Discord bot token from https://discord.com/developers/applications
+      DISCORD_TOKEN: your_token_here
+      # Optional: Set to 1 to enable debug logging
+      DEBUG: "0"
+      # Transmission RPC credentials (REQUIRED)
+      TRANSMISSION_HOST: transmission
+      TRANSMISSION_PORT: 9091
+      TRANSMISSION_USER: admin
+      TRANSMISSION_PASSWORD: password
+      # Optional: Discord role name for admin privileges (default: admin)
+      # DISCORD_ADMIN_ROLE: admin
+      # Optional: Specific Discord server ID if bot is in multiple servers
+      # DISCORD_GUILD_ID: "1234567890123456789"
+      # Optional: Clean up torrent names with these rules
+      # NAME_CLEANUP_REPLACE: "+: ,%20: "
+      # NAME_CLEANUP_REMOVE: "FitGirl,rutor.info"
+      # Optional: Notification settings (dm or channel)
+      # NOTIFY_MODE: dm
+      # NOTIFY_CHANNEL_ID: "1234567890123456789"
+      # Optional: UNC path for completed download notifications
+      # UNC_BASE: "\\\\server\\share"
     volumes:
-      - ./config.json:/app/config.json
-      - ./transfers.json:/app/transfers.json
+      # Persistent database storage
+      - ./transbotdata.db:/app/transbotdata.db
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "pgrep", "-f", "python bot.py"]
@@ -15,3 +38,12 @@ services:
       timeout: 10s
       retries: 3
       start_period: 10s
+    # Optional: Add this if your Transmission instance is in the same Docker network
+    # networks:
+    #   - transmission_network
+ 
+# Optional: Add this if your Transmission instance is in the same Docker network
+# networks:
+#   transmission_network:
+#     external: true
+ 

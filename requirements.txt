@@ -1,4 +1,4 @@
-discord.py>=1.7.3
+discord.py>=2.3.2
+aiosqlite>=0.19.0
 transmission-rpc>=3.3.0
-aiohttp
 pytz 

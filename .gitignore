@@ -1,2 +1,7 @@
 config.json
 docker-compose.yml
+torrents.db
+__pycache__/db.cpython-311.pyc
+transbotdata.db
+!transbotdata.db.empty
+transmissionbot.db
